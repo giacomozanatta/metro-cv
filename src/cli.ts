@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import packageJson from '../package.json' with { type: 'json' };
 import { DARK_THEME, LIGHT_THEME } from './color/theme.ts';
 import { formatIssue } from './config/issues.ts';
 import { generate, type RenderedMap } from './generate.ts';
@@ -51,7 +50,7 @@ async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
   if (args.values.version) {
-    console.log(packageJson.version);
+    console.log(await readVersion());
     return 0;
   }
   if (args.positionals.length > 1) {
@@ -80,6 +79,18 @@ async function main(argv: readonly string[]): Promise<number> {
   if (args.values.png && !(await writePngs(result.value, written))) return 1;
   console.log(`\nAdd it to your README with:\n\n${pictureSnippet(written)}`);
   return 0;
+}
+
+/**
+ * The version in the package.json one level up: next to src/ in development, next to dist/ once
+ * bundled. Reading it at run time keeps package.json, and with it every dependency version, out
+ * of the bundle, so dependency updates do not change dist/.
+ */
+async function readVersion(): Promise<string> {
+  const manifest = JSON.parse(
+    await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as { version: string };
+  return manifest.version;
 }
 
 /** Writes PNG copies next to the SVGs; false when the optional renderer is not installed. */

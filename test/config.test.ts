@@ -20,19 +20,31 @@ function onlyIssue(source: string): ConfigIssue {
 
 describe('loading a valid config', () => {
   it('puts the main line first and keeps config order after it', () => {
-    const timeline = timelineOf(readExample('giacomo'));
+    const timeline = timelineOf(readExample('showcase'));
     expect(timeline.lines.map((line) => line.id)).toEqual([
       MAIN_LINE_ID,
       'bs',
       'ms',
-      'alpenite',
+      'acme',
       'phd',
-      'aws-nyc',
-      'aws-austin',
+      'intern-1',
+      'intern-2',
     ]);
-    expect(timeline.origin).toBe('Giacomo Zanatta');
+    expect(timeline.origin).toBeUndefined();
+    expect(timeline.lines[0]?.label).toBeUndefined();
+    expect(timeline.reversed).toBe(false);
     expect(timeline.lines[0]?.parent).toBeNull();
-    expect(timeline.lines.find((line) => line.id === 'aws-nyc')?.depth).toBe(2);
+    expect(timeline.lines.find((line) => line.id === 'intern-1')?.depth).toBe(2);
+  });
+
+  it('accepts only true or false for reversed', () => {
+    const result = loadTimeline(
+      readExample('minimal').replace('version: 1', 'version: 1\nreversed: sideways'),
+    );
+    if (result.ok) throw new Error('expected the config to be rejected');
+    expect(result.error.map((issue) => [issue.message, issue.path])).toEqual([
+      ['expected true or false', ['reversed']],
+    ]);
   });
 
   it('shows periods exactly as the user wrote their dates', () => {

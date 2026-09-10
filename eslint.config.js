@@ -17,6 +17,8 @@ export default defineConfig(
     rules: {
       // SVG output interpolates coordinates everywhere; numbers in templates are intended.
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // `const { omitted, ...rest } = value` is the idiomatic way to drop a key.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       eqeqeq: 'error',
       'no-console': 'error',
     },

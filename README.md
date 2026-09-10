@@ -4,16 +4,16 @@
 
 **Your career as a metro map, for your GitHub profile README.**
 
-Describe your career in a short YAML file. metro-cv lays it out like a metro map, with lines
-that branch off and merge back, and renders light and dark SVGs that follow each viewer's
-GitHub theme.
+Describe your career in a short YAML file. metro-cv draws it as a metro map, where each part of
+your career is a line that branches off and merges back. The SVGs it renders follow each
+viewer's light or dark GitHub theme.
 
 [![CI](https://github.com/giacomozanatta/metro-cv/actions/workflows/ci.yml/badge.svg)](https://github.com/giacomozanatta/metro-cv/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/giacomo.dark.svg">
-  <img alt="A metro-map career: a B.S. and an M.S. in parallel with two roles at a company, followed by an ongoing PhD with two internships branching off it." src="examples/giacomo.light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="examples/showcase.dark.svg">
+  <img alt="A career as a metro map: two degrees, a job alongside the second one, and an ongoing PhD with two internships branching off it." src="examples/showcase.light.svg">
 </picture>
 
 </div>
@@ -31,8 +31,8 @@ GitHub theme.
 
 ## Quick start
 
-These steps put a map on your profile page, the README of the repository named after your
-username (`you/you`).
+Your profile page shows the README of the repository named after your username (`you/you`).
+Three steps add a map to it.
 
 **1. Describe your career** in `metro-cv.yml` at the root of that repository:
 
@@ -68,7 +68,7 @@ lines:
         tags: [Spark, Airflow, dbt]
 ```
 
-**2. Add a workflow** at `.github/workflows/metro-cv.yml` that regenerates the map whenever the
+**2. Add a workflow** at `.github/workflows/metro-cv.yml`. It regenerates the map whenever the
 config changes:
 
 ```yaml
@@ -82,7 +82,7 @@ on:
 permissions:
   contents: write
 
-# One run at a time, so two quick edits do not race to push.
+# One run at a time: two quick edits must not race to push.
 concurrency:
   group: metro-cv
   cancel-in-progress: false
@@ -106,33 +106,57 @@ jobs:
 </picture>
 ```
 
-Push, and the workflow commits `metro-cv-light.svg` and `metro-cv-dark.svg` next to your config.
-From then on, editing `metro-cv.yml` is all it takes to update the map.
+After your next push, the workflow commits `metro-cv-light.svg` and `metro-cv-dark.svg` next to
+your config. From then on, editing `metro-cv.yml` is all it takes to update the map.
 
 ## How it works
 
-A map has a **main line**, which is you, and any number of **lines** for the parts of your
-career: degrees, jobs, internships, side projects. Each line has **stations**, the things that
-happened on it.
+A map has a **main line**, which is you, and a **line** for each part of your career: degrees,
+jobs, internships, side projects. The things that happened on a line are its **stations**.
 
 - A line **branches** off its parent when its first station starts and **merges** back after its
-  last station ends. By default the parent is the main line; set `parent` to branch off another
-  line instead, like an internship during a PhD.
-- A line marked `ongoing` never merges back. It ends in a dotted tail, like the main line.
-- Lines that overlap in time run side by side. A line whose lifetime sits inside another's
-  always gets the inner lane, so nested lines never cross.
-- When two lines only partially overlap, one crossing is unavoidable. metro-cv draws it as a
-  bridge, the way real metro maps do.
-- The map is ordinal, not to scale: stations are spaced for readability, in date order.
+  last station ends. Its parent is the main line unless you set `parent`, as for an internship
+  during a PhD.
+- A line marked `ongoing` never merges back. Like the main line, it ends in a dotted tail.
+- Lines that overlap in time run side by side. A line whose lifetime lies inside another's takes
+  the inner lane, and metro-cv avoids crossings wherever it can.
+- A crossing that cannot be avoided, such as between two lines that only partially overlap, is
+  drawn as a bridge, as on a real metro map.
+- Each line passes under its parent where the two meet. The parent's track stays unbroken.
+- The map is ordinal, not to scale. Stations appear in date order and are spaced for readability.
 
-**Your words only.** Every piece of text on the map comes from your config. metro-cv never adds
-words of its own: a period is either your `period` text or your own dates as you wrote them.
+**Your words only.** All text on the map comes from your config. A period is either your own
+`period` text or your dates exactly as you wrote them.
 
 ## How-to guides
 
+### Put the newest first
+
+Set `reversed: true` to draw the map the way most CVs are written, with the most recent things at
+the top:
+
+```yaml
+version: 1
+reversed: true
+```
+
+Every line keeps its lane. Ongoing lines fade out at the top instead of the bottom, and the
+`origin` station moves to the bottom. See the [reversed example](#newest-first).
+
+### Keep your name off the map
+
+The main line's `label` and `origin` are both optional. Without them the map shows no name: the
+main line has no legend entry and starts without a station.
+
+```yaml
+main:
+  color: '#1e3a8a'
+```
+
 ### Branch a line off another line
 
-Set `parent` to the id of the line it belongs to. The child must start and end within its parent:
+Set `parent` to the id of the line it belongs to. A child line must start and end within its
+parent:
 
 ```yaml
 lines:
@@ -154,33 +178,33 @@ lines:
         from: 2025
 ```
 
-Lines can nest as deep as you like; see the [nested example](#examples).
+Lines can nest to any depth, as in the [nested example](#lines-inside-lines).
 
 ### Write periods your way
 
-`from` and `to` accept a year (`2019`) or a month (`'2019-03'`, quoted). The period column shows
-them as written: `2019–2021`, or `2019-03–2021-09`. To show something else, set `period`:
+`from` and `to` take a year (`2019`) or a month (`'2019-03'`, in quotes). The period column shows
+them as written, such as `2019–2021` or `2019-03–2021-09`. Set `period` to show other text:
 
 ```yaml
-- title: Staff Engineer
-  from: 2022
-  period: since 2022
+- title: Summer Intern
+  from: '2018-06'
+  to: '2018-09'
+  period: Summer 2018
 ```
 
-`from` also decides the order of stations and lines, so keep it accurate even when you override
-the text.
+`from` still decides where the station appears. Keep it accurate when you override the text.
 
-A bare year covers the whole year. A PhD with `to: 2020` can therefore contain an internship
-from `'2020-06'`, and metro-cv only reports a date as wrong when it certainly is: a child line
-starting before its parent, or ending after it.
+A bare year covers the whole year. A PhD with `to: 2020` can contain an internship from
+`'2020-06'`. metro-cv only rejects dates that are certainly wrong, such as a child line that
+starts before its parent or ends after it.
 
 ### Show a tech stack or a subtitle
 
-Each station has a second row with either `tags`, drawn as small chips, or a `subtitle`:
+Below its title, a station shows either `tags`, drawn as chips, or a `subtitle`:
 
 ```yaml
 - title: Technical Leader
-  org: Alpenite
+  org: ACME Inc.
   from: 2021
   to: 2023
   tags: [Golang, Heroku, microservices]
@@ -192,26 +216,25 @@ Each station has a second row with either `tags`, drawn as small chips, or a `su
 ```
 
 Chips wrap onto new rows to keep the map within 840 px, about the width of a GitHub README.
-Titles never wrap, so a long one widens the map instead.
+Titles do not wrap. A long title makes the map wider.
 
 ### Control colours in dark mode
 
-The light SVG uses your colours exactly. For the dark SVG, metro-cv keeps any colour that is
-visible on GitHub's dark background and lightens the others just enough, keeping their hue.
-To choose the dark colour yourself, set `darkColor`:
+The light SVG uses your colours exactly. In the dark SVG, a colour that would be hard to see on
+GitHub's dark background is lightened just enough, keeping its hue. Set `darkColor` to choose the
+dark colour yourself:
 
 ```yaml
 main:
-  label: Giacomo
   color: '#1e3a8a'
   darkColor: '#5b8def'
 ```
 
-Period text is adjusted separately in both themes to meet the WCAG contrast minimum for text.
+Period text is adjusted in both themes to meet the WCAG contrast minimum for text.
 
-### Preview locally before pushing
+### Preview locally
 
-Run the CLI against your config and open the SVGs in a browser:
+Run the CLI against your config, then open the SVGs in a browser:
 
 ```sh
 npx github:giacomozanatta/metro-cv metro-cv.yml --out-dir preview
@@ -219,8 +242,8 @@ npx github:giacomozanatta/metro-cv metro-cv.yml --out-dir preview
 
 ### Generate without committing
 
-Leave `commit` off to only write the files, then use the `changed` output in your own steps, for
-example to open a pull request instead of pushing:
+Leave `commit` off to only write the files. The `changed` output tells later steps whether the
+map changed, for example to open a pull request instead of pushing:
 
 ```yaml
 - id: map
@@ -235,27 +258,28 @@ example to open a pull request instead of pushing:
 
 ### Top level
 
-| Field     | Required | Description                                                                      |
-| --------- | -------- | -------------------------------------------------------------------------------- |
-| `version` | yes      | Always `1`.                                                                      |
-| `title`   | no       | Accessible name of the SVG (its `<title>`), read by screen readers.              |
-| `main`    | yes      | The main line: you.                                                              |
-| `lines`   | yes      | At least one line. They appear in the legend in this order, after the main line. |
+| Field      | Required | Description                                                                      |
+| ---------- | -------- | -------------------------------------------------------------------------------- |
+| `version`  | yes      | Always `1`.                                                                      |
+| `title`    | no       | Accessible name of the SVG (its `<title>`), read by screen readers.              |
+| `reversed` | no       | `true` puts the newest things at the top.                                        |
+| `main`     | yes      | The main line: you.                                                              |
+| `lines`    | yes      | At least one line. They appear in the legend in this order, after the main line. |
 
 ### `main`
 
-| Field       | Required | Description                                             |
-| ----------- | -------- | ------------------------------------------------------- |
-| `label`     | yes      | Legend label of the main line.                          |
-| `color`     | yes      | Hex colour, like `'#1e3a8a'`.                           |
-| `darkColor` | no       | Colour in the dark SVG. Derived from `color` if absent. |
-| `origin`    | no       | Text of the station at the top of the map.              |
+| Field       | Required | Description                                                                         |
+| ----------- | -------- | ----------------------------------------------------------------------------------- |
+| `label`     | no       | Legend label of the main line. Without it, the main line has no legend entry.       |
+| `color`     | yes      | Hex colour, like `'#1e3a8a'`.                                                       |
+| `darkColor` | no       | Colour in the dark SVG. Derived from `color` when absent.                           |
+| `origin`    | no       | Text of the station where the main line begins: the top, or the bottom if reversed. |
 
 ### Lines
 
 | Field       | Required | Description                                                                         |
 | ----------- | -------- | ----------------------------------------------------------------------------------- |
-| `id`        | yes      | Lowercase id like `aws-nyc`, used by `parent`. `main` is reserved.                  |
+| `id`        | yes      | Lowercase id like `acme-labs`, used by `parent`. `main` is reserved.                |
 | `label`     | yes      | Legend label. Lines with the same label and colours share one legend entry.         |
 | `color`     | yes      | Hex colour.                                                                         |
 | `darkColor` | no       | Colour in the dark SVG.                                                             |
@@ -275,13 +299,13 @@ example to open a pull request instead of pushing:
 | `subtitle` | no       | Second row of text. Cannot be combined with `tags`.              |
 | `tags`     | no       | List of tags shown as chips. Cannot be combined with `subtitle`. |
 
-Mistakes are reported with their position in the file, like a compiler would:
+Mistakes are reported with their position in the file, like compiler errors:
 
 ```text
 metro-cv.yml:14:13: "to" is earlier than "from" (at lines[2].stations[0].to)
 ```
 
-In a workflow, the same errors appear as annotations on the config file.
+In a workflow run, the same errors appear as annotations on the config file.
 
 ## Action reference
 
@@ -294,9 +318,9 @@ In a workflow, the same errors appear as annotations on the config file.
 | `commit`         | `false`               | Commit and push the SVGs when they differ from what is committed. |
 | `commit-message` | `Update metro-cv map` | Message of that commit.                                           |
 
-With `commit: true`, the workflow needs `permissions: contents: write`, and must run on a
-branch (for example on `push` or `workflow_dispatch`), not on a pull request's merge commit.
-The action pushes with the credentials `actions/checkout` sets up; it takes no token input.
+With `commit: true`, the workflow needs `permissions: contents: write` and must run on a branch,
+for example on `push` or `workflow_dispatch`. It cannot commit on a pull request's merge commit.
+The action pushes with the credentials that `actions/checkout` sets up and takes no token input.
 
 ### Outputs
 
@@ -306,7 +330,7 @@ The action pushes with the credentials `actions/checkout` sets up; it takes no t
 | `dark`    | Path of the dark SVG.                          |
 | `changed` | `true` when either SVG was created or changed. |
 
-Files are only written when their content changes, so a run without edits leaves the repository
+The action writes a file only when its content changes. A run without edits leaves the repository
 untouched.
 
 ## CLI reference
@@ -324,13 +348,14 @@ Options:
   -v, --version         print the version
 ```
 
-The exit code is `0` on success, `2` for invalid command-line usage, and `1` for everything
-else: problems in the config, or files that cannot be read or written.
+The exit code is `0` on success, `2` for invalid command-line usage and `1` for anything else,
+such as problems in the config or files that cannot be read or written.
 
 ## Examples
 
-Each example is a config in [`examples/`](examples) rendered by the test suite, so these images
-are always up to date.
+Each example is a config in [`examples/`](examples). The test suite checks that every image
+below matches its config. The map at the top of this page is
+[`examples/showcase.yml`](examples/showcase.yml).
 
 ### A first job after a degree
 
@@ -339,6 +364,15 @@ are always up to date.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/minimal.dark.svg">
   <img alt="Metro map of a degree followed by an ongoing job with two roles." src="examples/minimal.light.svg">
+</picture>
+
+### Newest first
+
+[`examples/reversed.yml`](examples/reversed.yml)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/reversed.dark.svg">
+  <img alt="Metro map with the most recent job at the top, a summer internship inside a degree further down, and no name." src="examples/reversed.light.svg">
 </picture>
 
 ### Overlapping lines, drawn as a bridge
@@ -359,10 +393,6 @@ are always up to date.
   <img alt="Metro map with a research rotation branching off a job, and a paper branching off the rotation." src="examples/nested.light.svg">
 </picture>
 
-### The author's career
-
-[`examples/giacomo.yml`](examples/giacomo.yml) is the map at the top of this page.
-
 ## Development
 
 metro-cv needs Node.js 24.
@@ -371,21 +401,21 @@ metro-cv needs Node.js 24.
 npm ci
 npm run all       # format check, lint, typecheck, tests, bundle
 npm run preview   # render every example to SVG and PNG in preview/
-npm run examples  # refresh the example SVGs after an intended visual change
+npm run examples  # re-render the example SVGs after an intended visual change
 ```
 
-The code is a pure pipeline, with no DOM, so the same core can later run in a browser:
+The code is a pure pipeline with no DOM. The same core can later run in a browser.
 
-1. `src/config`: parse the YAML, validate it with positioned errors, and normalise it into a
+1. `src/config` parses the YAML, validates it with positioned errors and normalises it into a
    `Timeline`.
-2. `src/layout`: order branch, station and merge events; give each line a lane; place everything
-   vertically; build tracks, bridges, labels and the legend.
-3. `src/render`: draw the layout as SVG for a theme.
+2. `src/layout` orders branch, station and merge events, gives each line a lane, places
+   everything vertically and builds tracks, bridges, labels and the legend.
+3. `src/render` draws the layout as SVG in a theme.
 
-`dist/` holds the bundled Action and CLI, plus the licenses of the packages bundled into them.
-It is committed, because GitHub runs actions straight from the repository. CI fails if it is out
-of date, so run `npm run bundle` before committing. Dependabot does not rebuild it: for an update
-to a bundled dependency, check out the pull request, run `npm run bundle` and push the result.
+`dist/` holds the bundled Action and CLI and the licenses of the packages bundled into them. It
+is committed because GitHub runs actions straight from the repository. CI fails when it is out of
+date: run `npm run bundle` before committing. Dependabot does not rebuild it. For an update to a
+bundled dependency, check out the pull request, run `npm run bundle` and push the result.
 
 ## License
 

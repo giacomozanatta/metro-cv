@@ -58,7 +58,7 @@ const station = z
   });
 
 const main = z.strictObject({
-  label: text,
+  label: text.optional(),
   color,
   darkColor: color.optional(),
   origin: text.optional(),
@@ -77,6 +77,7 @@ const line = z.strictObject({
 export const configSchema = z.strictObject({
   version: z.literal(1, { error: 'expected "version: 1"' }),
   title: text.optional(),
+  reversed: z.boolean({ error: 'expected true or false' }).optional(),
   main,
   lines: z.array(line).min(1, { error: 'add at least one line' }),
 });

@@ -82,7 +82,7 @@ export function normalize(config: Config): Result<Timeline, readonly ConfigIssue
 
   const main: Line = {
     id: MAIN_LINE_ID,
-    label: config.main.label,
+    ...(config.main.label !== undefined && { label: config.main.label }),
     color: config.main.color.toLowerCase(),
     ...(config.main.darkColor !== undefined && {
       darkColor: config.main.darkColor.toLowerCase(),
@@ -98,6 +98,7 @@ export function normalize(config: Config): Result<Timeline, readonly ConfigIssue
 
   return ok({
     ...(config.title !== undefined && { title: config.title }),
+    reversed: config.reversed ?? false,
     ...(config.main.origin !== undefined && { origin: config.main.origin }),
     lines: [main, ...lines],
   });

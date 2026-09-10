@@ -66,6 +66,16 @@ describe('renderSvg', () => {
     }
   });
 
+  it('paints every line under its parent', () => {
+    const svg = renderSvg(layout(timelineOf(readExample('showcase'))), LIGHT_THEME);
+    const pathIndex = (stroke: string) => svg.search(new RegExp(`<path [^>]*stroke="${stroke}"`));
+    const [aws, phd, bs, main] = ['#ff9900', '#7b3f98', '#d6457e', '#1e3a8a'].map(pathIndex);
+    expect(aws).toBeGreaterThan(-1);
+    expect(aws).toBeLessThan(phd ?? -1);
+    expect(phd).toBeLessThan(main ?? -1);
+    expect(bs).toBeLessThan(main ?? -1);
+  });
+
   it('keeps special characters intact', () => {
     const result = generate(
       "version: 1\nmain: { label: 'R&D <team>', color: '#111111' }\nlines:\n- { id: a, label: \"Ca' Foscari\", color: '#222222', stations: [{ title: 'Q&A \"live\"', from: 2020 }] }\n",

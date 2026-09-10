@@ -1,4 +1,4 @@
-import type { Timeline } from '../model/timeline.ts';
+import type { Line, Timeline } from '../model/timeline.ts';
 import type { Crossing } from './crossings.ts';
 import type { LaneAssignment } from './lanes.ts';
 import type { LayoutMetrics } from './metrics.ts';
@@ -13,8 +13,10 @@ export interface Point {
 /** A line's centreline as a polyline; bends are rounded when drawn. */
 export interface Track {
   readonly line: string;
+  /** Depth of the line in the parent tree (main = 0); deeper lines are painted first. */
+  readonly depth: number;
   readonly points: readonly Point[];
-  /** Dotted continuation below an ongoing line. */
+  /** Dotted continuation where an ongoing line runs off the map: at the bottom, or the top if reversed. */
   readonly tail?: { readonly from: Point; readonly to: Point };
 }
 
@@ -28,7 +30,7 @@ export interface Bridge {
 interface Context {
   readonly events: readonly LayoutEvent[];
   readonly assignment: LaneAssignment;
-  readonly placement: VerticalPlacement;
+  readonly placement: Pick<VerticalPlacement, 'eventY' | 'bottom'>;
   readonly metrics: LayoutMetrics;
   /** y of the top of the main line. */
   readonly top: number;
@@ -52,43 +54,69 @@ export function buildTracks(timeline: Timeline, context: Context): readonly Trac
     if (y === undefined) throw new Error(`event ${index} has no y`);
     return y;
   };
-  const withTail = (line: string, points: readonly Point[]): Track => {
+  // A line with no branch comes in from the top of the map, one with no merge runs off the bottom;
+  // either way the open end continues as a dotted tail.
+  const tailFrom = (end: Point, direction: 1 | -1) => ({
+    from: end,
+    to: { x: end.x, y: end.y + direction * metrics.tailLength },
+  });
+  const track = (
+    line: Line,
+    start: readonly Point[],
+    end: readonly Point[],
+    open: 'top' | 'bottom' | undefined,
+  ): Track => {
+    const points = [...start, ...end];
+    const first = points[0];
     const last = points.at(-1);
-    if (!last) throw new Error(`track "${line}" is empty`);
+    if (!first || !last) throw new Error(`track "${line.id}" is empty`);
     return {
-      line,
+      line: line.id,
+      depth: line.depth,
       points,
-      tail: { from: last, to: { x: last.x, y: last.y + metrics.tailLength } },
+      ...(open === 'top' && { tail: tailFrom(first, -1) }),
+      ...(open === 'bottom' && { tail: tailFrom(last, 1) }),
     };
   };
 
   return timeline.lines.map((line): Track => {
     if (line.parent === null) {
-      return withTail(line.id, [
-        { x: x(0), y: context.top },
-        { x: x(0), y: placement.bottom },
-      ]);
+      return track(
+        line,
+        [{ x: x(0), y: context.top }],
+        [{ x: x(0), y: placement.bottom }],
+        timeline.reversed ? 'top' : 'bottom',
+      );
     }
 
     const own = assignment.laneOf(line.id);
     const parent = assignment.laneOf(line.parent);
     const bend = Math.abs(own - parent) * metrics.laneSpacing;
     const { branch, merge } = indices.get(line.id) ?? {};
-    if (branch === undefined) throw new Error(`line "${line.id}" never branches`);
-
-    const branchY = yAt(branch);
-    const points: Point[] = [
-      { x: x(parent), y: branchY },
-      { x: x(own), y: branchY + bend },
-    ];
-    if (merge === undefined) {
-      return withTail(line.id, [...points, { x: x(own), y: placement.bottom }]);
+    if (branch === undefined && merge === undefined) {
+      throw new Error(`line "${line.id}" neither branches nor merges`);
     }
-    const mergeY = yAt(merge);
-    return {
-      line: line.id,
-      points: [...points, { x: x(own), y: mergeY }, { x: x(parent), y: mergeY + bend }],
-    };
+
+    const start =
+      branch === undefined
+        ? [{ x: x(own), y: context.top }]
+        : [
+            { x: x(parent), y: yAt(branch) },
+            { x: x(own), y: yAt(branch) + bend },
+          ];
+    const end =
+      merge === undefined
+        ? [{ x: x(own), y: placement.bottom }]
+        : [
+            { x: x(own), y: yAt(merge) },
+            { x: x(parent), y: yAt(merge) + bend },
+          ];
+    return track(
+      line,
+      start,
+      end,
+      branch === undefined ? 'top' : merge === undefined ? 'bottom' : undefined,
+    );
   });
 }
 

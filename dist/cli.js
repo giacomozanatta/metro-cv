@@ -657,14 +657,14 @@ var require_Alias = __commonJS({
           if (ctx)
             ctx.aliasResolveCache = nodes;
         }
-        let found = void 0;
+        let found2 = void 0;
         for (const node2 of nodes) {
           if (node2 === this)
             break;
           if (node2.anchor === this.source)
-            found = node2;
+            found2 = node2;
         }
-        return found;
+        return found2;
       }
       toJSON(_arg, ctx) {
         if (!ctx)
@@ -3789,7 +3789,7 @@ var require_resolve_props = __commonJS({
       let tag = null;
       let newlineAfterProp = null;
       let comma = null;
-      let found = null;
+      let found2 = null;
       let start = null;
       for (const token of tokens) {
         if (reqSpace) {
@@ -3826,7 +3826,7 @@ var require_resolve_props = __commonJS({
             if (atNewline) {
               if (comment)
                 comment += token.source;
-              else if (!found || indicator !== "seq-item-ind")
+              else if (!found2 || indicator !== "seq-item-ind")
                 spaceBefore = true;
             } else
               commentSep += token.source;
@@ -3860,9 +3860,9 @@ var require_resolve_props = __commonJS({
           case indicator:
             if (anchor2 || tag)
               onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
-            if (found)
+            if (found2)
               onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow ?? "collection"}`);
-            found = token;
+            found2 = token;
             atNewline = indicator === "seq-item-ind" || indicator === "explicit-key-ind";
             hasSpace = false;
             break;
@@ -3891,7 +3891,7 @@ var require_resolve_props = __commonJS({
         onError(tab, "TAB_AS_INDENT", "Tabs are not allowed as indentation");
       return {
         comma,
-        found,
+        found: found2,
         spaceBefore,
         comment,
         hasNewline,
@@ -7640,7 +7640,7 @@ function normalize(config2) {
   });
   const main3 = {
     id: MAIN_LINE_ID,
-    label: config2.main.label,
+    ...config2.main.label !== void 0 && { label: config2.main.label },
     color: config2.main.color.toLowerCase(),
     ...config2.main.darkColor !== void 0 && {
       darkColor: config2.main.darkColor.toLowerCase()
@@ -7655,6 +7655,7 @@ function normalize(config2) {
   };
   return ok({
     ...config2.title !== void 0 && { title: config2.title },
+    reversed: config2.reversed ?? false,
     ...config2.main.origin !== void 0 && { origin: config2.main.origin },
     lines: [main3, ...lines]
   });
@@ -27548,7 +27549,7 @@ var station = external_exports.strictObject({
   path: ["tags"]
 });
 var main = external_exports.strictObject({
-  label: text,
+  label: text.optional(),
   color,
   darkColor: color.optional(),
   origin: text.optional()
@@ -27565,6 +27566,7 @@ var line = external_exports.strictObject({
 var configSchema = external_exports.strictObject({
   version: external_exports.literal(1, { error: 'expected "version: 1"' }),
   title: text.optional(),
+  reversed: external_exports.boolean({ error: "expected true or false" }).optional(),
   main,
   lines: external_exports.array(line).min(1, { error: "add at least one line" })
 });
@@ -27633,40 +27635,53 @@ function buildTracks(timeline, context) {
     if (y === void 0) throw new Error(`event ${index} has no y`);
     return y;
   };
-  const withTail = (line2, points) => {
+  const tailFrom = (end, direction) => ({
+    from: end,
+    to: { x: end.x, y: end.y + direction * metrics.tailLength }
+  });
+  const track = (line2, start, end, open2) => {
+    const points = [...start, ...end];
+    const first = points[0];
     const last = points.at(-1);
-    if (!last) throw new Error(`track "${line2}" is empty`);
+    if (!first || !last) throw new Error(`track "${line2.id}" is empty`);
     return {
-      line: line2,
+      line: line2.id,
+      depth: line2.depth,
       points,
-      tail: { from: last, to: { x: last.x, y: last.y + metrics.tailLength } }
+      ...open2 === "top" && { tail: tailFrom(first, -1) },
+      ...open2 === "bottom" && { tail: tailFrom(last, 1) }
     };
   };
   return timeline.lines.map((line2) => {
     if (line2.parent === null) {
-      return withTail(line2.id, [
-        { x: x(0), y: context.top },
-        { x: x(0), y: placement.bottom }
-      ]);
+      return track(
+        line2,
+        [{ x: x(0), y: context.top }],
+        [{ x: x(0), y: placement.bottom }],
+        timeline.reversed ? "top" : "bottom"
+      );
     }
     const own2 = assignment.laneOf(line2.id);
     const parent = assignment.laneOf(line2.parent);
     const bend = Math.abs(own2 - parent) * metrics.laneSpacing;
     const { branch, merge: merge2 } = indices.get(line2.id) ?? {};
-    if (branch === void 0) throw new Error(`line "${line2.id}" never branches`);
-    const branchY = yAt(branch);
-    const points = [
-      { x: x(parent), y: branchY },
-      { x: x(own2), y: branchY + bend }
-    ];
-    if (merge2 === void 0) {
-      return withTail(line2.id, [...points, { x: x(own2), y: placement.bottom }]);
+    if (branch === void 0 && merge2 === void 0) {
+      throw new Error(`line "${line2.id}" neither branches nor merges`);
     }
-    const mergeY = yAt(merge2);
-    return {
-      line: line2.id,
-      points: [...points, { x: x(own2), y: mergeY }, { x: x(parent), y: mergeY + bend }]
-    };
+    const start = branch === void 0 ? [{ x: x(own2), y: context.top }] : [
+      { x: x(parent), y: yAt(branch) },
+      { x: x(own2), y: yAt(branch) + bend }
+    ];
+    const end = merge2 === void 0 ? [{ x: x(own2), y: placement.bottom }] : [
+      { x: x(own2), y: yAt(merge2) },
+      { x: x(parent), y: yAt(merge2) + bend }
+    ];
+    return track(
+      line2,
+      start,
+      end,
+      branch === void 0 ? "top" : merge2 === void 0 ? "bottom" : void 0
+    );
   });
 }
 function buildBridges(crossings, context) {
@@ -28080,20 +28095,19 @@ function compareNumbers(a, b) {
 
 // src/layout/lanes.ts
 function assignLanes(timeline, events) {
-  const spans = /* @__PURE__ */ new Map();
+  const spans = new Map(
+    timeline.lines.map((line2) => [line2.id, { start: -Infinity, end: Infinity }])
+  );
   events.forEach((event, index) => {
-    if (event.kind === "branch") spans.set(event.line.id, { start: index, end: Infinity });
-    if (event.kind === "merge") {
-      const span = spans.get(event.line.id);
-      if (span) spans.set(event.line.id, { start: span.start, end: index });
-    }
+    const span = spans.get(event.line.id);
+    if (span && event.kind === "branch") spans.set(event.line.id, { ...span, start: index });
+    if (span && event.kind === "merge") spans.set(event.line.id, { ...span, end: index });
   });
   const children = /* @__PURE__ */ new Map();
   let main3;
   for (const line2 of timeline.lines) {
     if (line2.parent === null) {
       main3 = line2;
-      spans.set(line2.id, { start: -Infinity, end: Infinity });
     } else {
       children.set(line2.parent, [...children.get(line2.parent) ?? [], line2]);
     }
@@ -28110,30 +28124,79 @@ function assignLanes(timeline, events) {
     return compareNumbers(sa.end, sb.end) || compareNumbers(sb.start, sa.start) || compareNumbers(a.order, b.order);
   };
   const pack = (line2) => {
-    const slots = [{ line: line2.id, lane: 0, span: spanOf(line2.id) }];
+    const slots = [{ line: line2.id, parent: void 0, lane: 0, span: spanOf(line2.id) }];
     for (const child of (children.get(line2.id) ?? []).toSorted(packingOrder)) {
       const unit = pack(child);
-      const collides = (offset2) => unit.some(
-        (slot) => slots.some(
-          (other) => other.lane === slot.lane + offset2 && overlaps(slot.span, other.span)
-        )
+      const placed = (offset) => unit.map((slot) => ({ ...slot, lane: slot.lane + offset, parent: slot.parent ?? line2.id }));
+      const collides = (candidate) => candidate.some(
+        (slot) => slots.some((other) => other.lane === slot.lane && overlaps(slot.span, other.span))
       );
-      let offset = 1;
-      while (collides(offset)) offset++;
-      for (const slot of unit) slots.push({ ...slot, lane: slot.lane + offset });
+      const outermost = Math.max(...slots.map((slot) => slot.lane)) + 1;
+      let best;
+      for (let offset = 1; offset <= outermost && best?.crossings !== 0; offset++) {
+        const candidate = placed(offset);
+        if (collides(candidate)) continue;
+        const crossings = nestedCrossings(slots, candidate);
+        if (!best || crossings < best.crossings) best = { slots: candidate, crossings };
+      }
+      if (!best) throw new Error(`no lane found for "${child.id}"`);
+      slots.push(...best.slots);
     }
     return slots;
   };
-  const lanes = new Map(pack(main3).map((slot) => [slot.line, slot.lane]));
-  const laneOf = (id) => {
-    const lane = lanes.get(id);
-    if (lane === void 0) throw new Error(`line "${id}" has no lane`);
-    return lane;
+  return makeAssignment(new Map(pack(main3).map((slot) => [slot.line, slot.lane])), spans);
+}
+function reverseAssignment(assignment, eventCount) {
+  const mirror = (index) => eventCount - 1 - index;
+  const spans = new Map(
+    [...assignment.spans].map(([id, span]) => [
+      id,
+      { start: mirror(span.end), end: mirror(span.start) }
+    ])
+  );
+  return makeAssignment(assignment.lanes, spans);
+}
+function makeAssignment(lanes, spans) {
+  return {
+    lanes,
+    spans,
+    laneCount: Math.max(...lanes.values()) + 1,
+    laneOf: (id) => found(lanes.get(id), `line "${id}" has no lane`),
+    spanOf: (id) => found(spans.get(id), `line "${id}" has no span`)
   };
-  return { lanes, spans, laneCount: Math.max(...lanes.values()) + 1, laneOf, spanOf };
+}
+function found(value, message) {
+  if (value === void 0) throw new Error(message);
+  return value;
 }
 function overlaps(a, b) {
   return a.start < b.end && b.start < a.end;
+}
+function nested(a, b) {
+  const contains = (outer, inner) => outer.start <= inner.start && inner.end <= outer.end;
+  return contains(a, b) || contains(b, a);
+}
+function nestedCrossings(placed, candidate) {
+  const all = [...placed, ...candidate];
+  const laneOf = new Map(all.map((slot) => [slot.line, slot.lane]));
+  const inCandidate = new Set(candidate.map((slot) => slot.line));
+  let count = 0;
+  for (const bending of all) {
+    const from = bending.parent === void 0 ? void 0 : laneOf.get(bending.parent);
+    if (from === void 0) continue;
+    const low = Math.min(from, bending.lane);
+    const high = Math.max(from, bending.lane);
+    for (const moment of [bending.span.start, bending.span.end]) {
+      if (!Number.isFinite(moment)) continue;
+      for (const other of all) {
+        const acrossGroups = inCandidate.has(other.line) !== inCandidate.has(bending.line);
+        const between = other.lane > low && other.lane < high;
+        const running = other.span.start < moment && moment < other.span.end;
+        if (acrossGroups && between && running && nested(bending.span, other.span)) count++;
+      }
+    }
+  }
+  return count;
 }
 
 // src/layout/legend.ts
@@ -28150,17 +28213,19 @@ function layoutLegend(lines, limit, metrics) {
   let y = FIRST_ROW_Y;
   let right = 0;
   for (const line2 of lines) {
-    const key = JSON.stringify([line2.label, line2.color, line2.darkColor]);
+    const { label } = line2;
+    if (label === void 0) continue;
+    const key = JSON.stringify([label, line2.color, line2.darkColor]);
     if (seen.has(key)) continue;
     seen.add(key);
-    const width = SWATCH_LENGTH + SWATCH_TO_TEXT + measureText(line2.label, TYPOGRAPHY.legend);
+    const width = SWATCH_LENGTH + SWATCH_TO_TEXT + measureText(label, TYPOGRAPHY.legend);
     if (x > metrics.margin && x + width > limit) {
       x = metrics.margin;
       y += ROW_HEIGHT;
     }
     entries.push({
       line: line2.id,
-      label: line2.label,
+      label,
       x,
       y,
       swatchLength: SWATCH_LENGTH,
@@ -28238,6 +28303,18 @@ function orderEvents(timeline) {
   }
   return ordered;
 }
+function reverseEvents(events) {
+  return events.toReversed().map((event) => {
+    switch (event.kind) {
+      case "branch":
+        return { kind: "merge", line: event.line };
+      case "merge":
+        return { kind: "branch", line: event.line };
+      case "station":
+        return event;
+    }
+  });
+}
 function link(from, to) {
   from.successors.push(to);
   to.pendingPredecessors += 1;
@@ -28271,12 +28348,13 @@ function placeVertically(events, { laneOf }, labels, origin, metrics) {
   const { laneSpacing, stationGap, labelGap } = metrics;
   const diagonals = new LaneClearance();
   const stations = new LaneClearance();
-  let cursor = 0;
+  let cursor = stationGap;
   let labelBottom = -Infinity;
   let lowest = 0;
-  if (origin) {
+  if (origin?.at === "top") {
+    cursor = 0;
     diagonals.raise(0, stationGap);
-    labelBottom = origin.below;
+    labelBottom = origin.label.below;
   }
   const eventY = events.map((event, index) => {
     if (event.kind === "station") {
@@ -28304,7 +28382,21 @@ function placeVertically(events, { laneOf }, labels, origin, metrics) {
     lowest = Math.max(lowest, y + drop(to));
     return y;
   });
-  return { eventY, bottom: Math.max(lowest + stationGap, labelBottom) };
+  if (origin?.at === "bottom") {
+    const y = Math.max(
+      cursor,
+      lowest + stationGap,
+      stations.at(0),
+      labelBottom + labelGap + origin.label.above
+    );
+    return { eventY, originY: y, bottom: y, labelBottom: y + origin.label.below };
+  }
+  return {
+    eventY,
+    ...origin && { originY: 0 },
+    bottom: Math.max(lowest + stationGap, labelBottom),
+    labelBottom
+  };
 }
 function lanesBetween(from, to) {
   const step = to >= from ? 1 : -1;
@@ -28316,8 +28408,11 @@ function lanesBetween(from, to) {
 // src/layout/layout.ts
 function layout(timeline, options = {}) {
   const metrics = resolveMetrics(options);
-  const events = orderEvents(timeline);
-  const assignment = assignLanes(timeline, events);
+  const newestFirst = timeline.reversed;
+  const chronological = orderEvents(timeline);
+  const lanes = assignLanes(timeline, chronological);
+  const events = newestFirst ? reverseEvents(chronological) : chronological;
+  const assignment = newestFirst ? reverseAssignment(lanes, events.length) : lanes;
   const crossings = findCrossings(events, assignment);
   const columns = computeColumns(
     timeline.lines.flatMap((line2) => line2.stations),
@@ -28340,8 +28435,14 @@ function layout(timeline, options = {}) {
     Math.max(labelsRight, metrics.maxWidth - metrics.margin),
     metrics
   );
-  const top = legend.bottom;
-  const relative = placeVertically(events, assignment, shapes, origin, metrics);
+  const top = legend.bottom + (newestFirst ? metrics.tailLength : 0);
+  const relative = placeVertically(
+    events,
+    assignment,
+    shapes,
+    origin === void 0 ? void 0 : { label: origin, at: newestFirst ? "bottom" : "top" },
+    metrics
+  );
   const placement = {
     eventY: relative.eventY.map((y) => y + top),
     bottom: relative.bottom + top
@@ -28356,7 +28457,6 @@ function layout(timeline, options = {}) {
     bottom: y + shape.below
   });
   const stations = [];
-  if (origin) stations.push(mark(MAIN_LINE_ID, "origin", laneX(0, metrics), top, origin));
   events.forEach((event, index) => {
     if (event.kind !== "station") return;
     const shape = shapes.get(index);
@@ -28365,9 +28465,19 @@ function layout(timeline, options = {}) {
     const x = laneX(assignment.laneOf(event.line.id), metrics);
     stations.push(mark(event.line.id, "stop", x, y, shape));
   });
+  if (origin && relative.originY !== void 0) {
+    const at = mark(MAIN_LINE_ID, "origin", laneX(0, metrics), relative.originY + top, origin);
+    if (newestFirst) stations.push(at);
+    else stations.unshift(at);
+  }
   return {
     width: Math.ceil(Math.max(labelsRight, legend.right) + metrics.margin),
-    height: Math.ceil(placement.bottom + metrics.tailLength + metrics.margin),
+    height: Math.ceil(
+      Math.max(
+        placement.bottom + (newestFirst ? 0 : metrics.tailLength),
+        relative.labelBottom + top
+      ) + metrics.margin
+    ),
     ...timeline.title !== void 0 && { title: timeline.title },
     strokeWidth: metrics.strokeWidth,
     cornerRadius: metrics.cornerRadius,
@@ -28419,9 +28529,9 @@ var CHIP_RADIUS = 4;
 function renderSvg(layout2, theme) {
   const palettes = new Map(layout2.lines.map((line2) => [line2.id, linePalette(line2, theme)]));
   const palette = (id) => {
-    const found = palettes.get(id);
-    if (!found) throw new Error(`no colours for line "${id}"`);
-    return found;
+    const found2 = palettes.get(id);
+    if (!found2) throw new Error(`no colours for line "${id}"`);
+    return found2;
   };
   const strokeProps = (color2) => ({
     fill: "none",
@@ -28458,8 +28568,8 @@ function renderSvg(layout2, theme) {
       })
     ] : []
   );
-  const [main3, ...branches] = layout2.tracks;
-  const tracks = [...branches, ...main3 ? [main3] : []].map(
+  const paintOrder = layout2.tracks.toSorted((a, b) => b.depth - a.depth);
+  const tracks = paintOrder.map(
     (track) => element("path", {
       d: roundedPath(track.points, layout2.cornerRadius),
       ...strokeProps(palette(track.line).stroke)

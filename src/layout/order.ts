@@ -1,7 +1,10 @@
 import { compareNumbers } from '../compare.ts';
 import type { Line, Station, Timeline } from '../model/timeline.ts';
 
-/** Something that happens on the map, top to bottom. */
+/**
+ * Something that happens on the map, in drawing order from top to bottom: a branch is where a
+ * line leaves its parent, a merge where it rejoins it.
+ */
 export type LayoutEvent =
   | { readonly kind: 'branch'; readonly line: Line }
   | { readonly kind: 'station'; readonly line: Line; readonly station: Station }
@@ -104,6 +107,24 @@ export function orderEvents(timeline: Timeline): readonly LayoutEvent[] {
     throw new Error('event constraints form a cycle; the timeline was not validated');
   }
   return ordered;
+}
+
+/**
+ * The events of a reversed, newest-first map: a line now leaves its parent where it used to
+ * rejoin it, and branches and merges swap. Ongoing lines then have no branch: they come in from
+ * the top of the map.
+ */
+export function reverseEvents(events: readonly LayoutEvent[]): readonly LayoutEvent[] {
+  return events.toReversed().map((event): LayoutEvent => {
+    switch (event.kind) {
+      case 'branch':
+        return { kind: 'merge', line: event.line };
+      case 'merge':
+        return { kind: 'branch', line: event.line };
+      case 'station':
+        return event;
+    }
+  });
 }
 
 function link(from: EventNode, to: EventNode): void {

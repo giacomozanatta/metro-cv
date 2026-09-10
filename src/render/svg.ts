@@ -66,9 +66,10 @@ export function renderSvg(layout: Layout, theme: Theme): string {
       : [],
   );
 
-  // Branch tracks go first so the main line covers the round caps where they join it.
-  const [main, ...branches] = layout.tracks;
-  const tracks = [...branches, ...(main ? [main] : [])].map((track: Track) =>
+  // Deepest lines first, so every line passes under its parent where they join, and the parent
+  // covers the round cap. Sorting is stable, so siblings keep their config order.
+  const paintOrder = layout.tracks.toSorted((a, b) => b.depth - a.depth);
+  const tracks = paintOrder.map((track: Track) =>
     element('path', {
       d: roundedPath(track.points, layout.cornerRadius),
       ...strokeProps(palette(track.line).stroke),

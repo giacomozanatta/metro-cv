@@ -44,18 +44,20 @@ export function layoutLegend(
   let right = 0;
 
   for (const line of lines) {
-    const key = JSON.stringify([line.label, line.color, line.darkColor]);
+    const { label } = line;
+    if (label === undefined) continue;
+    const key = JSON.stringify([label, line.color, line.darkColor]);
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const width = SWATCH_LENGTH + SWATCH_TO_TEXT + measureText(line.label, TYPOGRAPHY.legend);
+    const width = SWATCH_LENGTH + SWATCH_TO_TEXT + measureText(label, TYPOGRAPHY.legend);
     if (x > metrics.margin && x + width > limit) {
       x = metrics.margin;
       y += ROW_HEIGHT;
     }
     entries.push({
       line: line.id,
-      label: line.label,
+      label,
       x,
       y,
       swatchLength: SWATCH_LENGTH,

@@ -1,0 +1,40 @@
+# The most recent things at the top, as on most CVs, and no name on the map.
+version: 1
+reversed: true
+main:
+  color: '#0f766e'
+lines:
+  - id: university
+    label: University
+    color: '#2563eb'
+    stations:
+      - title: B.Sc. Physics
+        org: Northfield University
+        from: 2016
+        to: 2019
+
+  - id: summer
+    label: Internship
+    color: '#9333ea'
+    parent: university
+    stations:
+      - title: Summer Intern
+        org: Acme
+        from: '2018-06'
+        to: '2018-09'
+        period: Summer 2018
+
+  - id: acme
+    label: Acme
+    color: '#dc2626'
+    ongoing: true
+    stations:
+      - title: Data Analyst
+        org: Acme
+        from: 2019
+        to: 2022
+        tags: [SQL, Python]
+      - title: Data Engineer
+        org: Acme
+        from: 2022
+        tags: [Spark, Airflow, dbt]

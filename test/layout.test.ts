@@ -8,30 +8,31 @@ import { orderEvents } from '../src/layout/order.ts';
 import { placeVertically } from '../src/layout/vertical.ts';
 import { configWithLines, describeEvents, readExample, timelineOf } from './helpers.ts';
 
-const giacomo = timelineOf(readExample('giacomo'));
+const showcase = timelineOf(readExample('showcase'));
 
 describe('orderEvents', () => {
-  it('orders the reference career', () => {
-    expect(describeEvents(orderEvents(giacomo))).toEqual([
+  it('orders the showcase career', () => {
+    expect(describeEvents(orderEvents(showcase))).toEqual([
       'branch:bs',
-      'bs@B.S. Information Science and Technology',
+      'bs@B.S. Computer Science',
+      // Same date: merges come before branches.
       'merge:bs',
       'branch:ms',
       'ms@M.S. Computer Science',
-      'branch:alpenite',
-      'alpenite@Software Consultant & Software Engineer',
-      'alpenite@Technical Leader',
-      // Same date: the line opened last closes first, and merges come before branches.
-      'merge:alpenite',
+      'branch:acme',
+      'acme@Software Consultant & Software Engineer',
+      'acme@Technical Leader',
+      // Same date: the line opened last closes first.
+      'merge:acme',
       'merge:ms',
       'branch:phd',
       'phd@PhD in Computer Science',
-      'branch:aws-nyc',
-      'aws-nyc@Applied Scientist Intern',
-      'merge:aws-nyc',
-      'branch:aws-austin',
-      'aws-austin@Applied Scientist Intern',
-      'merge:aws-austin',
+      'branch:intern-1',
+      'intern-1@Applied Scientist Intern',
+      'merge:intern-1',
+      'branch:intern-2',
+      'intern-2@Applied Scientist Intern',
+      'merge:intern-2',
     ]);
   });
 
@@ -65,17 +66,17 @@ describe('orderEvents', () => {
 });
 
 describe('assignLanes', () => {
-  it('nests the reference career without crossings', () => {
-    const events = orderEvents(giacomo);
-    const assignment = assignLanes(giacomo, events);
+  it('nests the showcase career without crossings', () => {
+    const events = orderEvents(showcase);
+    const assignment = assignLanes(showcase, events);
     expect(Object.fromEntries(assignment.lanes)).toEqual({
       main: 0,
       bs: 1,
       ms: 2,
-      alpenite: 1,
+      acme: 1,
       phd: 1,
-      'aws-nyc': 2,
-      'aws-austin': 2,
+      'intern-1': 2,
+      'intern-2': 2,
     });
     expect(assignment.laneCount).toBe(3);
     expect(findCrossings(events, assignment)).toEqual([]);
@@ -103,23 +104,24 @@ describe('assignLanes', () => {
 });
 
 describe('placeVertically', () => {
-  const events = orderEvents(giacomo);
-  const assignment = assignLanes(giacomo, events);
+  const events = orderEvents(showcase);
+  const assignment = assignLanes(showcase, events);
   const columns = computeColumns(
-    giacomo.lines.flatMap((line) => line.stations),
+    showcase.lines.flatMap((line) => line.stations),
     assignment.laneCount,
     DEFAULT_METRICS,
   );
   const shapes = new Map<number, LabelShape>();
   events.forEach((event, i) => {
-    if (event.kind === 'station')
+    if (event.kind === 'station') {
       shapes.set(i, shapeStationLabel(event.station, columns, DEFAULT_METRICS));
+    }
   });
   const { eventY } = placeVertically(events, assignment, shapes, undefined, DEFAULT_METRICS);
   const indexOf = (name: string) => describeEvents(events).indexOf(name);
 
   it('merges lines that end together as a parallel fan', () => {
-    expect(eventY[indexOf('merge:alpenite')]).toBe(eventY[indexOf('merge:ms')]);
+    expect(eventY[indexOf('merge:acme')]).toBe(eventY[indexOf('merge:ms')]);
   });
 
   it('never moves upwards', () => {
@@ -131,31 +133,34 @@ describe('placeVertically', () => {
 
 describe('layout', () => {
   it('shares one legend entry between lines that look the same', () => {
-    expect(layout(giacomo).legend.map((entry) => entry.label)).toEqual([
-      'Giacomo',
+    expect(layout(showcase).legend.map((entry) => entry.label)).toEqual([
       'B.S.',
       'M.S.',
-      'Alpenite',
+      'ACME Inc.',
       'PhD',
-      'AWS',
+      'Internships',
     ]);
   });
 
+  it('lists the main line in the legend only when it has a label', () => {
+    const labelled = timelineOf(readExample('showcase').replace('main:\n', 'main:\n  label: Me\n'));
+    expect(layout(labelled).legend[0]?.label).toBe('Me');
+  });
+
   it('draws a dotted tail only on ongoing lines', () => {
-    const tails = layout(giacomo)
+    const tails = layout(showcase)
       .tracks.filter((track) => track.tail)
       .map((track) => track.line);
     expect(tails).toEqual(['main', 'phd']);
   });
 
   it('wraps tag chips to respect the maximum width', () => {
-    const narrow = layout(giacomo, { maxWidth: 520 });
+    const narrow = layout(showcase, { maxWidth: 520 });
     const chips = narrow.stations.flatMap((station) => station.label.chips);
     expect(Math.max(...chips.map((chip) => chip.x + chip.width))).toBeLessThanOrEqual(
       520 - DEFAULT_METRICS.margin,
     );
-    expect(
-      new Set(chips.filter((c) => c.text === 'Jira' || c.text === 'Node.js').map((c) => c.y)).size,
-    ).toBe(2);
+    const consultant = narrow.stations.find((station) => station.label.chips.length === 7);
+    expect(new Set(consultant?.label.chips.map((chip) => chip.y)).size).toBeGreaterThan(1);
   });
 });

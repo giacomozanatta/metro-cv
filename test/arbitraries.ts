@@ -32,11 +32,21 @@ const lineSpec = fc.record({
 type LineSpec = typeof lineSpec extends fc.Arbitrary<infer T> ? T : never;
 type StationSpec = typeof stationSpec extends fc.Arbitrary<infer T> ? T : never;
 
-export const configArbitrary: fc.Arbitrary<Config> = fc
-  .tuple(fc.array(lineSpec, { minLength: 1, maxLength: 12 }), fc.nat())
-  .map(([specs, rotation]) => buildConfig(specs, rotation));
+const mapSpec = fc.record({ rotation: fc.nat(), reversed: fc.boolean(), mainLabel: fc.boolean() });
 
-function buildConfig(specs: readonly LineSpec[], rotation: number): Config {
+type MapSpec = typeof mapSpec extends fc.Arbitrary<infer T> ? T : never;
+
+export const configArbitrary: fc.Arbitrary<Config> = fc
+  .tuple(fc.array(lineSpec, { minLength: 1, maxLength: 12 }), mapSpec)
+  .map(([specs, map]) => buildConfig(specs, map));
+
+/** Careers where every line branches off the main line, which is ongoing and spans everything. */
+export const flatConfigArbitrary: fc.Arbitrary<Config> = configArbitrary.map((config) => ({
+  ...config,
+  lines: config.lines.map(({ parent, ...line }) => line),
+}));
+
+function buildConfig(specs: readonly LineSpec[], map: MapSpec): Config {
   const spans: { start: number; end: number; ongoing: boolean }[] = [];
   const lines = specs.map((spec, i): LineConfig => {
     // Parent 0 is the main line; parent k > 0 is line k - 1.
@@ -77,10 +87,11 @@ function buildConfig(specs: readonly LineSpec[], rotation: number): Config {
   });
 
   // Rotate the config order so parents are sometimes declared after their children.
-  const cut = rotation % lines.length;
+  const cut = map.rotation % lines.length;
   return {
     version: 1,
-    main: { label: 'Me', color: '#334155', origin: 'Origin' },
+    ...(map.reversed && { reversed: true }),
+    main: { ...(map.mainLabel && { label: 'Me' }), color: '#334155', origin: 'Origin' },
     lines: [...lines.slice(cut), ...lines.slice(0, cut)],
   };
 }

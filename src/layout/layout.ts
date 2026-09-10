@@ -16,10 +16,10 @@ import {
   type Label,
   type LabelShape,
 } from './labels.ts';
-import { assignLanes } from './lanes.ts';
+import { assignLanes, reverseAssignment } from './lanes.ts';
 import { layoutLegend, type LegendEntry } from './legend.ts';
 import { resolveMetrics, type LayoutMetrics } from './metrics.ts';
-import { orderEvents } from './order.ts';
+import { orderEvents, reverseEvents } from './order.ts';
 import { placeVertically } from './vertical.ts';
 
 export interface StationMark {
@@ -57,8 +57,12 @@ export interface Layout {
 export function layout(timeline: Timeline, options: Partial<LayoutMetrics> = {}): Layout {
   const metrics = resolveMetrics(options);
 
-  const events = orderEvents(timeline);
-  const assignment = assignLanes(timeline, events);
+  // A reversed map is the same map mirrored in time, newest first, so both share their lanes.
+  const newestFirst = timeline.reversed;
+  const chronological = orderEvents(timeline);
+  const lanes = assignLanes(timeline, chronological);
+  const events = newestFirst ? reverseEvents(chronological) : chronological;
+  const assignment = newestFirst ? reverseAssignment(lanes, events.length) : lanes;
   const crossings = findCrossings(events, assignment);
 
   const columns = computeColumns(
@@ -84,9 +88,16 @@ export function layout(timeline: Timeline, options: Partial<LayoutMetrics> = {})
     Math.max(labelsRight, metrics.maxWidth - metrics.margin),
     metrics,
   );
-  const top = legend.bottom;
+  // Newest first, ongoing lines fade out upwards, so their dotted tails need room below the legend.
+  const top = legend.bottom + (newestFirst ? metrics.tailLength : 0);
 
-  const relative = placeVertically(events, assignment, shapes, origin, metrics);
+  const relative = placeVertically(
+    events,
+    assignment,
+    shapes,
+    origin === undefined ? undefined : { label: origin, at: newestFirst ? 'bottom' : 'top' },
+    metrics,
+  );
   const placement = {
     eventY: relative.eventY.map((y) => y + top),
     bottom: relative.bottom + top,
@@ -108,7 +119,6 @@ export function layout(timeline: Timeline, options: Partial<LayoutMetrics> = {})
     bottom: y + shape.below,
   });
   const stations: StationMark[] = [];
-  if (origin) stations.push(mark(MAIN_LINE_ID, 'origin', laneX(0, metrics), top, origin));
   events.forEach((event, index) => {
     if (event.kind !== 'station') return;
     const shape = shapes.get(index);
@@ -117,10 +127,20 @@ export function layout(timeline: Timeline, options: Partial<LayoutMetrics> = {})
     const x = laneX(assignment.laneOf(event.line.id), metrics);
     stations.push(mark(event.line.id, 'stop', x, y, shape));
   });
+  if (origin && relative.originY !== undefined) {
+    const at = mark(MAIN_LINE_ID, 'origin', laneX(0, metrics), relative.originY + top, origin);
+    if (newestFirst) stations.push(at);
+    else stations.unshift(at);
+  }
 
   return {
     width: Math.ceil(Math.max(labelsRight, legend.right) + metrics.margin),
-    height: Math.ceil(placement.bottom + metrics.tailLength + metrics.margin),
+    height: Math.ceil(
+      Math.max(
+        placement.bottom + (newestFirst ? 0 : metrics.tailLength),
+        relative.labelBottom + top,
+      ) + metrics.margin,
+    ),
     ...(timeline.title !== undefined && { title: timeline.title }),
     strokeWidth: metrics.strokeWidth,
     cornerRadius: metrics.cornerRadius,

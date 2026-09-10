@@ -20,7 +20,8 @@ export function textContents(svg: string): string[] {
  * without a `period`, their dates as written, alone or joined by a dash.
  */
 export function userStrings(config: Config): Set<string> {
-  const strings = new Set<string>([config.main.label]);
+  const strings = new Set<string>();
+  if (config.main.label !== undefined) strings.add(config.main.label);
   if (config.title !== undefined) strings.add(config.title);
   if (config.main.origin !== undefined) strings.add(config.main.origin);
   for (const line of config.lines) {

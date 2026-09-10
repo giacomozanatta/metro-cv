@@ -15,7 +15,8 @@ export interface Station {
 
 export interface Line {
   readonly id: string;
-  readonly label: string;
+  /** Legend label. Only the main line may have none, and then it is left out of the legend. */
+  readonly label?: string;
   readonly color: string;
   readonly darkColor?: string;
   /** `null` only for the main line. */
@@ -35,7 +36,9 @@ export interface Line {
 /** A validated career, independent of how it was written down. */
 export interface Timeline {
   readonly title?: string;
-  /** Label of the station at the very top of the main line. */
+  /** Whether the map is drawn newest first, like most CVs, instead of oldest first. */
+  readonly reversed: boolean;
+  /** Label of the station where the main line begins: at the top, or at the bottom if reversed. */
   readonly origin?: string;
   /** The main line first, then the other lines in config order. */
   readonly lines: readonly Line[];

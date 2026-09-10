@@ -23,6 +23,31 @@ describe('lane packing', () => {
     expect(Object.fromEntries(assignment.lanes)).toEqual({ main: 0, ms: 1, intern: 2, job: 3 });
     expect(findCrossings(events, assignment)).toEqual([]);
   });
+
+  it('keeps an enclosing line outside a nested one that was pushed outwards', () => {
+    // Found by property testing: `l1` lies inside `l4` in time, but its child cannot share a lane
+    // with the `l3` family, so `l1` is pushed outwards; `l4` must then not take the inner lane.
+    const timeline = timelineOf(
+      configWithLines(`
+        - { id: l2, label: L2, color: '#222222', stations: [{ title: S2, from: '2000-01', to: '2000-01' }] }
+        - { id: l3, label: L3, color: '#333333', stations: [{ title: S3, from: '2000-01', to: '2000-02' }] }
+        - { id: l4, label: L4, color: '#444444', ongoing: true, stations: [{ title: S4, from: '2000-02' }] }
+        - { id: l5, label: L5, color: '#555555', parent: l3, stations: [{ title: S5, from: '2000-02' }] }
+        - { id: l6, label: L6, color: '#666666', parent: l1, stations: [{ title: S6, from: '2000-02', to: '2000-03' }] }
+        - { id: l0, label: L0, color: '#777777', stations: [{ title: S0, from: '2000-01', to: '2000-01' }] }
+        - { id: l1, label: L1, color: '#888888', ongoing: true, stations: [{ title: S1, from: '2000-02' }] }
+      `),
+    );
+    const events = orderEvents(timeline);
+    const assignment = assignLanes(timeline, events);
+    const nestedPairs = findCrossings(events, assignment).filter(({ line, under }) => {
+      const a = assignment.spanOf(line);
+      const b = assignment.spanOf(under);
+      return (a.start <= b.start && b.end <= a.end) || (b.start <= a.start && a.end <= b.end);
+    });
+    expect(nestedPairs).toEqual([]);
+    expect(assignment.laneOf('l4')).toBeGreaterThan(assignment.laneOf('l1'));
+  });
 });
 
 describe('text that cannot go into XML', () => {

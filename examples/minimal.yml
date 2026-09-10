@@ -1,0 +1,30 @@
+# The smallest useful map: a degree, then a job that is still going.
+version: 1
+main:
+  label: Sam
+  color: '#0f766e'
+  origin: Sam Rivera
+lines:
+  - id: university
+    label: University
+    color: '#2563eb'
+    stations:
+      - title: B.Sc. Physics
+        org: Northfield University
+        from: 2016
+        to: 2019
+
+  - id: acme
+    label: Acme
+    color: '#dc2626'
+    ongoing: true
+    stations:
+      - title: Data Analyst
+        org: Acme
+        from: 2019
+        to: 2022
+        tags: [SQL, Python]
+      - title: Data Engineer
+        org: Acme
+        from: 2022
+        tags: [Spark, Airflow, dbt]

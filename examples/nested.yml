@@ -1,0 +1,51 @@
+# Lines can branch off any other line: a research rotation inside a job,
+# and a paper inside that rotation.
+version: 1
+main:
+  label: Kai
+  color: '#7c2d12'
+  origin: Kai Moreau
+lines:
+  - id: umbrella
+    label: Umbrella Labs
+    color: '#0e7490'
+    ongoing: true
+    stations:
+      - title: Software Engineer
+        org: Umbrella Labs
+        from: 2017
+        to: 2020
+      - title: Staff Engineer
+        org: Umbrella Labs
+        from: 2020
+        tags: [Rust, Kubernetes]
+
+  - id: rotation
+    label: Research rotation
+    color: '#9333ea'
+    parent: umbrella
+    stations:
+      - title: Research Engineer
+        org: Umbrella Research
+        from: 2018-03
+        to: 2019-09
+        tags: [PyTorch]
+
+  - id: paper
+    label: Paper
+    color: '#db2777'
+    parent: rotation
+    stations:
+      - title: First-author paper
+        subtitle: Accepted at a workshop
+        from: 2019-05
+
+  - id: open-source
+    label: Open source
+    color: '#65a30d'
+    ongoing: true
+    stations:
+      - title: Maintainer
+        org: Open-source project
+        from: 2021
+        tags: [Go]

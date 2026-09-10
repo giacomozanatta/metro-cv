@@ -1,0 +1,34 @@
+name: metro-cv
+description: Turn a YAML career timeline into a metro-map SVG for your GitHub profile README.
+author: Giacomo Zanatta
+branding:
+  icon: git-branch
+  color: blue
+
+inputs:
+  config:
+    description: Path to the YAML config.
+    default: metro-cv.yml
+  output-dir:
+    description: Directory the SVGs are written to.
+    default: .
+  commit:
+    description: >-
+      Commit and push the SVGs when they differ from what is committed. The workflow needs
+      `permissions: contents: write` and must run on a branch, not a detached HEAD.
+    default: 'false'
+  commit-message:
+    description: Message for that commit.
+    default: Update metro-cv map
+
+outputs:
+  light:
+    description: Path of the light-theme SVG.
+  dark:
+    description: Path of the dark-theme SVG.
+  changed:
+    description: '"true" when either SVG was created or changed.'
+
+runs:
+  using: node24
+  main: dist/action.js

@@ -1,0 +1,70 @@
+version: 1
+main:
+  label: Giacomo
+  color: '#1e3a8a'
+  origin: Giacomo Zanatta
+lines:
+  - id: bs
+    label: B.S.
+    color: '#d6457e'
+    stations:
+      - title: B.S. Information Science and Technology
+        org: Ca' Foscari
+        from: 2015
+        to: 2018
+
+  - id: ms
+    label: M.S.
+    color: '#00a650'
+    stations:
+      - title: M.S. Computer Science
+        subtitle: Software Dependability and Cybersecurity
+        org: Ca' Foscari
+        from: 2018
+        to: 2023
+
+  - id: alpenite
+    label: Alpenite
+    color: '#e32017'
+    stations:
+      - title: Software Consultant & Software Engineer
+        org: Alpenite
+        from: 2019
+        to: 2021
+        tags: [Node.js, SFCC, APEX, Python, JavaScript, CI/CD, Jira]
+      - title: Technical Leader
+        org: Alpenite
+        from: 2021
+        to: 2023
+        tags: [Golang, Heroku, microservices]
+
+  - id: phd
+    label: PhD
+    color: '#7b3f98'
+    ongoing: true
+    stations:
+      - title: PhD in Computer Science
+        org: Ca' Foscari
+        from: 2023
+        to: 2027
+        tags: [software correctness, static analysis, Java, Python]
+
+  - id: aws-nyc
+    label: AWS
+    color: '#ff9900'
+    parent: phd
+    stations:
+      - title: Applied Scientist Intern
+        org: AWS New York
+        from: 2025
+        tags: [Java, Python]
+
+  - id: aws-austin
+    label: AWS
+    color: '#ff9900'
+    parent: phd
+    stations:
+      - title: Applied Scientist Intern
+        org: AWS Austin
+        from: 2026
+        tags: [Java, Python, Lean]

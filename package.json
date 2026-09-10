@@ -1,0 +1,69 @@
+{
+  "name": "metro-cv",
+  "version": "1.0.0",
+  "description": "Turn a YAML career timeline into a metro-map SVG for your GitHub profile README.",
+  "keywords": [
+    "github-action",
+    "profile-readme",
+    "career",
+    "timeline",
+    "metro-map",
+    "svg",
+    "resume",
+    "cv"
+  ],
+  "license": "MIT",
+  "author": "Giacomo Zanatta",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giacomozanatta/metro-cv.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "metro-cv": "dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js",
+    "dist/licenses.txt"
+  ],
+  "scripts": {
+    "bundle": "node scripts/bundle.ts",
+    "examples": "vitest run test/examples.test.ts --update",
+    "preview": "node scripts/preview.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "all": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run bundle"
+  },
+  "devDependencies": {
+    "@actions/core": "3.0.1",
+    "@eslint/js": "10.0.1",
+    "@resvg/resvg-js": "2.6.2",
+    "@types/node": "24.13.4",
+    "@vitest/coverage-v8": "5.0.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "fast-check": "4.9.0",
+    "fast-xml-validator": "1.4.2",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0",
+    "yaml": "2.9.0",
+    "zod": "4.6.1"
+  },
+  "peerDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  },
+  "peerDependenciesMeta": {
+    "@resvg/resvg-js": {
+      "optional": true
+    }
+  }
+}

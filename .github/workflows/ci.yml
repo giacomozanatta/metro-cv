@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Format, lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  dist:
+    name: dist/ is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: rm -rf dist && npm run bundle
+      - name: Compare with the committed bundle
+        run: |
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            echo "::error::dist/ is out of date. Run 'npm run bundle' and commit the result."
+            git status --short -- dist
+            exit 1
+          fi
+
+  action:
+    name: Action end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate a map
+        id: map
+        uses: ./
+        with:
+          config: examples/minimal.yml
+          output-dir: ${{ runner.temp }}/map
+      - name: Check the outputs
+        env:
+          LIGHT: ${{ steps.map.outputs.light }}
+          DARK: ${{ steps.map.outputs.dark }}
+          CHANGED: ${{ steps.map.outputs.changed }}
+        run: |
+          test "$CHANGED" = true
+          grep -q '<svg' "$LIGHT"
+          grep -q '<svg' "$DARK"
+
+      - name: Prepare an invalid config
+        run: |
+          printf 'version: 1\nmain: { label: Me, color: blue }\nlines: []\n' > "$RUNNER_TEMP/invalid.yml"
+      - name: Reject the invalid config
+        id: invalid
+        continue-on-error: true
+        uses: ./
+        with:
+          config: ${{ runner.temp }}/invalid.yml
+          output-dir: ${{ runner.temp }}/invalid
+      - name: Check that it failed
+        if: steps.invalid.outcome != 'failure'
+        run: exit 1
+
+      - name: Prepare a repository with a local remote
+        run: |
+          git init --quiet --bare "$RUNNER_TEMP/remote.git"
+          git clone --quiet "$RUNNER_TEMP/remote.git" "$RUNNER_TEMP/profile"
+          cp examples/minimal.yml "$RUNNER_TEMP/profile/metro-cv.yml"
+          git -C "$RUNNER_TEMP/profile" -c user.name=ci -c user.email=ci@example.com commit --quiet --allow-empty -m init
+          git -C "$RUNNER_TEMP/profile" push --quiet origin HEAD
+      - name: Commit and push the map
+        uses: ./
+        with:
+          config: ${{ runner.temp }}/profile/metro-cv.yml
+          output-dir: ${{ runner.temp }}/profile
+          commit: true
+      - name: Check the pushed commit
+        run: |
+          test "$(git -C "$RUNNER_TEMP/remote.git" log -1 --format=%an)" = 'github-actions[bot]'
+          git -C "$RUNNER_TEMP/remote.git" show --name-only --format= HEAD | sort > "$RUNNER_TEMP/files"
+          printf 'metro-cv-dark.svg\nmetro-cv-light.svg\n' | diff - "$RUNNER_TEMP/files"

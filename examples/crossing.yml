@@ -1,0 +1,36 @@
+# A job that starts during a degree and outlasts it: the lines have to cross once,
+# and the crossing is drawn as a bridge, like on a real metro map.
+version: 1
+main:
+  label: Robin
+  color: '#334155'
+  origin: Robin Park
+lines:
+  - id: msc
+    label: M.Sc.
+    color: '#16a34a'
+    stations:
+      - title: M.Sc. Data Science
+        org: Northfield University
+        from: 2018-09
+        to: 2020-07
+
+  - id: globex
+    label: Globex
+    color: '#2563eb'
+    stations:
+      - title: Junior Developer
+        org: Globex
+        from: 2019-01
+        to: 2021-12
+        tags: [Java, Spring]
+
+  - id: initech
+    label: Initech
+    color: '#ea580c'
+    ongoing: true
+    stations:
+      - title: Founding Engineer
+        org: Initech
+        from: 2022-01
+        tags: [TypeScript, AWS]

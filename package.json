@@ -1,6 +1,6 @@
 {
   "name": "metro-cv",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn a YAML career timeline into a metro-map SVG for your GitHub profile README.",
   "keywords": [
     "github-action",
